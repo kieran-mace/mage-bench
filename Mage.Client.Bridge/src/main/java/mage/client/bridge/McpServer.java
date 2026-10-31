@@ -237,6 +237,14 @@ public class McpServer {
         JsonObject arguments = params.has("arguments") ? params.getAsJsonObject("arguments") : new JsonObject();
 
         Map<String, Object> toolResult = registry.call(toolName, arguments, client.getCallbackHandler());
+        if (Boolean.TRUE.equals(toolResult.get("game_over")) || "game_over".equals(toolResult.get("stop_reason"))) {
+            // Say who won, e.g. "Player alice is the winner" (the server's GAME_OVER message).
+            String gameResult = client.awaitLastGameResult(2_000);
+            if (gameResult != null) {
+                toolResult = new java.util.LinkedHashMap<>(toolResult);
+                toolResult.put("game_result", gameResult);
+            }
+        }
 
         // Format as MCP tool result
         return Map.of(

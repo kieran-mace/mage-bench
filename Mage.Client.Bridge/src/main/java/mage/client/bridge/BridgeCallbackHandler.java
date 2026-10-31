@@ -693,6 +693,15 @@ public class BridgeCallbackHandler {
         return mcpQueryApi.getMyDecklist();
     }
 
+    /** The game this handler is (or was last) playing, or null. */
+    public UUID currentGameIdOrNull() {
+        try {
+            return processor.submit(BridgeCommand.of(() -> processorState.gameState().currentGameId()));
+        } catch (IllegalStateException e) {
+            return null;
+        }
+    }
+
     /** The tournament (draft/build) seat for this bridge, or null outside tournaments. */
     public mage.client.bridge.draft.BridgeDraftSeat draftSeat() {
         return client.getDraftSeat();

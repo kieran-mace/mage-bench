@@ -26,6 +26,9 @@ public class BridgeMageClient implements MageClient {
     // mtgBench: set when this bridge is seated in a tournament (draft/build/Swiss).
     private volatile mage.client.bridge.draft.BridgeDraftSeat draftSeat;
     private volatile mage.client.bridge.draft.BridgeNotebook notebook;
+    // Server message for the most recent GAME_OVER ("Player X is the winner").
+    private volatile String lastGameResult;
+    private volatile java.util.UUID lastGameResultGameId;
 
     public BridgeMageClient(String username) {
         this.username = username;
@@ -64,6 +67,25 @@ public class BridgeMageClient implements MageClient {
             }
         }
         return notebook;
+    }
+
+    /** The latest game's result message, waiting briefly for the GAME_OVER callback to arrive. */
+    public String awaitLastGameResult(long maxWaitMs) {
+        java.util.UUID currentGame = callbackHandler.currentGameIdOrNull();
+        long until = System.currentTimeMillis() + maxWaitMs;
+        while (System.currentTimeMillis() < until) {
+            String result = lastGameResult;
+            if (result != null && (currentGame == null || currentGame.equals(lastGameResultGameId))) {
+                return result;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return lastGameResult;
     }
 
     public BridgeCallbackHandler getCallbackHandler() {
@@ -140,6 +162,13 @@ public class BridgeMageClient implements MageClient {
 
     @Override
     public void onCallback(ClientCallback callback) {
+        if (callback.getMethod() == mage.interfaces.callback.ClientCallbackMethod.GAME_OVER) {
+            callback.decompressData();
+            if (callback.getData() instanceof mage.view.GameClientMessage message) {
+                lastGameResultGameId = callback.getObjectId();
+                lastGameResult = message.getMessage();
+            }
+        }
         mage.client.bridge.draft.BridgeDraftSeat seat = draftSeat;
         if (seat != null) {
             if (seat.handles(callback.getMethod())) {
