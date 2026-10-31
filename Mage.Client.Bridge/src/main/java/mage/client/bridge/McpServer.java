@@ -49,6 +49,7 @@ public class McpServer {
         SubmitDeckTool.class,
         GetSetCardsTool.class,
         NotebookTool.class,
+        LookupRulesTool.class,
     };
 
     /** Additional tools only available in keepAlive (multi-game) mode. */
