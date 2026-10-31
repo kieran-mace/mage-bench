@@ -25,6 +25,12 @@ public class DraftOptions extends LimitedOptions implements Serializable {
         PROFESSIONAL("x1.0", "Professional (x1.0)", 1.0,
                 Arrays.asList(75, 70, 65, 60, 55, 50, 45, 40, 30, 25, 20, 15, 12, 10, 7)
         ),
+        // For agent-driven drafts (e.g. LLM benchmarks): 10 minutes for every pick.
+        // (In testing, a zero "no timer" timeout led to the deck construction step
+        // being skipped, so this uses a long fixed timer instead.)
+        AGENT("x8.0", "Agent-paced (10 min per pick)", 8.0,
+                Arrays.asList(600)
+        ),
         NONE("ERROR", "", 0,
                 Arrays.asList(1)
         );

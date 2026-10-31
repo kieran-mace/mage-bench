@@ -43,6 +43,12 @@ public class McpServer {
         GetActionChoicesTool.class,
         ChooseActionTool.class,
         ConcedeTool.class,
+        // mtgBench: draft/build seat and agent notebook
+        GetDraftStateTool.class,
+        DraftPickTool.class,
+        SubmitDeckTool.class,
+        GetSetCardsTool.class,
+        NotebookTool.class,
     };
 
     /** Additional tools only available in keepAlive (multi-game) mode. */

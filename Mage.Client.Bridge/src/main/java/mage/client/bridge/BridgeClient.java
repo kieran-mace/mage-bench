@@ -149,9 +149,27 @@ public class BridgeClient {
             System.exit(1);
         }
 
-        // In keepAlive mode, skip initial deck load and table join — the join_table
-        // MCP tool handles the game lifecycle.
-        if (keepAlive) {
+        // mtgBench tournament mode: take a seat in a Booster Draft tournament table.
+        // The draft seat handles picks/building via MCP tools; games run through the
+        // normal handler, re-armed per Swiss game, until the tournament ends.
+        String tournamentTableProp = System.getProperty("xmage.bridge.tournamentTableId");
+        if (tournamentTableProp != null && !tournamentTableProp.isBlank()) {
+            // Draft tools need the full card database (set listings, basic lands).
+            CardScanner.scanned = false;
+            CardScanner.scan();
+            client.setDraftSeat(new mage.client.bridge.draft.BridgeDraftSeat(
+                    client, System.getProperty("xmage.bridge.draftlog")));
+            callbackHandler.setKeepAliveAfterGame(true);
+            UUID tournamentTableId = UUID.fromString(tournamentTableProp.trim());
+            if (!session.joinTournamentTable(roomId, tournamentTableId, username, PlayerType.HUMAN, 1, null, "")) {
+                logger.error("Failed to join tournament table " + tournamentTableId + ": " + session.getLastError());
+                session.connectStop(false, false);
+                System.exit(1);
+            }
+            logger.info("Joined tournament table " + tournamentTableId + ", waiting for the draft to start...");
+        } else if (keepAlive) {
+            // In keepAlive mode, skip initial deck load and table join — the join_table
+            // MCP tool handles the game lifecycle.
             logger.info("keepAlive mode: skipping initial table join (join_table tool will drive game lifecycle)");
         } else {
             String deckPath = getStringSetting(args, "--deck", "xmage.bridge.deck", null);

@@ -693,6 +693,50 @@ public class BridgeCallbackHandler {
         return mcpQueryApi.getMyDecklist();
     }
 
+    /** The tournament (draft/build) seat for this bridge, or null outside tournaments. */
+    public mage.client.bridge.draft.BridgeDraftSeat draftSeat() {
+        return client.getDraftSeat();
+    }
+
+    /** The agent's notebook, shared by every game of this bridge session. */
+    public mage.client.bridge.draft.BridgeNotebook notebook() {
+        return client.getNotebook();
+    }
+
+    /** Short label for where the game is ("T5 PRECOMBAT_MAIN (alice)"), or the draft position. */
+    public String currentContextLabel() {
+        try {
+            String label = processor.submit(BridgeCommand.of(() -> {
+                GameView gameView = processorState.gameState().lastGameView();
+                return gameView == null ? null
+                        : "T" + gameView.getTurn() + " " + gameView.getStep() + " (" + gameView.getActivePlayerName() + ")";
+            }));
+            if (label != null) {
+                return label;
+            }
+        } catch (IllegalStateException ignored) {
+            // processor shut down between games
+        }
+        mage.client.bridge.draft.BridgeDraftSeat seat = draftSeat();
+        if (seat != null) {
+            mage.client.bridge.draft.BridgeDraftSeat.State state = seat.state();
+            return state.phase + (state.pack_number != null && state.pack_number > 0
+                    ? " P" + state.pack_number + "p" + state.pick_number : "");
+        }
+        return null;
+    }
+
+    /**
+     * Tournament mode: the server starts each Swiss game on a new table without a
+     * join_table call, so swap in a fresh handler armed to accept that table's game.
+     */
+    public BridgeCallbackHandler createFreshForTournamentGame(UUID tableId) {
+        BridgeCallbackHandler fresh = createFreshForNextGame();
+        BridgeStartGameFlow flow = fresh.startPendingStartGameFlow(tableId);
+        fresh.recordJoinedStartGameTable(flow, tableId);
+        return fresh;
+    }
+
     public GetOracleTextTool.Result getOracleText(String cardName, String objectId, String[] cardNames, String[] objectIds) {
         return mcpQueryApi.getOracleText(cardName, objectId, cardNames, objectIds);
     }

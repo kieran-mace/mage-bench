@@ -23,6 +23,9 @@ public class BridgeMageClient implements MageClient {
     private volatile boolean running = true;
     private volatile boolean reconnectable = false;
     private volatile boolean suppressDisconnect = false;
+    // mtgBench: set when this bridge is seated in a tournament (draft/build/Swiss).
+    private volatile mage.client.bridge.draft.BridgeDraftSeat draftSeat;
+    private volatile mage.client.bridge.draft.BridgeNotebook notebook;
 
     public BridgeMageClient(String username) {
         this.username = username;
@@ -42,6 +45,25 @@ public class BridgeMageClient implements MageClient {
 
     public String getUsername() {
         return username;
+    }
+
+    public mage.client.bridge.draft.BridgeDraftSeat getDraftSeat() {
+        return draftSeat;
+    }
+
+    public void setDraftSeat(mage.client.bridge.draft.BridgeDraftSeat draftSeat) {
+        this.draftSeat = draftSeat;
+    }
+
+    public synchronized mage.client.bridge.draft.BridgeNotebook getNotebook() {
+        if (notebook == null) {
+            try {
+                notebook = new mage.client.bridge.draft.BridgeNotebook(System.getProperty("xmage.bridge.notebookLog"));
+            } catch (java.io.IOException e) {
+                throw new IllegalStateException("Cannot open notebook log", e);
+            }
+        }
+        return notebook;
     }
 
     public BridgeCallbackHandler getCallbackHandler() {
@@ -118,6 +140,21 @@ public class BridgeMageClient implements MageClient {
 
     @Override
     public void onCallback(ClientCallback callback) {
+        mage.client.bridge.draft.BridgeDraftSeat seat = draftSeat;
+        if (seat != null) {
+            if (seat.handles(callback.getMethod())) {
+                seat.onCallback(callback);
+                return;
+            }
+            if (callback.getMethod() == mage.interfaces.callback.ClientCallbackMethod.START_GAME) {
+                // Each tournament game starts on its own table: arm a fresh game handler for it.
+                callback.decompressData();
+                mage.view.TableClientMessage message = (mage.view.TableClientMessage) callback.getData();
+                logger.info("[" + username + "] Tournament game starting on table " + message.getCurrentTableId());
+                callbackHandler.createFreshForTournamentGame(message.getCurrentTableId());
+                seat.markPlaying();
+            }
+        }
         callbackListener.enqueue(callbackHandler, callback);
     }
 
