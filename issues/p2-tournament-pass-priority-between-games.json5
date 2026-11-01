@@ -1,0 +1,13 @@
+{
+  "title": "Tournament mode: pass_priority should block between Swiss games, not repeat game_over",
+  "description": "In bridge tournament mode (-Dxmage.bridge.tournamentTableId), after a game ends, every pass_priority/choose_action call returns {stop_reason: game_over} immediately until the next game starts, because BridgePassPriorityFlow.maybeFinishGameOver fires on (!hasActiveGame && gameEverStarted). \
+A pilot that keeps calling pass_priority spins (seen in a scripted mtgBench smoke run: ~1800 game_over results for 6 real games). The mtgBench direct-API pilot works around it by deduplicating game_over and polling get_draft_state/pass_priority itself (TODO(shim) in mtg_bench harness/pilot/pilot.py). \
+Fix: in tournament mode, once a game is over and its game_over has been delivered, pass_priority should wait for the next tournament game (or return a tournament_over result) instead of repeating game_over. \
+Related: before the first game (during draft/deck building), pass_priority blocks with activeGame=false until a game starts; it should return an error telling the agent to use get_draft_state, so a confused agent doesn't let its pick timers run out.",
+  "status": "open",
+  "priority": 2,
+  "type": "task",
+  "labels": ["bridge", "tournament"],
+  "created_at": "2026-11-01T03:22:25.000000+00:00",
+  "updated_at": "2026-11-01T03:22:25.000000+00:00",
+}
